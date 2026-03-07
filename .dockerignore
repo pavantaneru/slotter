@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+
+# Build output
+.next
+
+# Local dev database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Environment files (secrets go in docker-compose env or runtime env)
+.env
+.env.local
+.env*.local
+
+# Dev tooling
+.claude
+.git
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db

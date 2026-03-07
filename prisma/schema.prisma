@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String        @default("")
+  createdAt    DateTime      @default(now())
+  bookingPages BookingPage[]
+}
+
+model BookingPage {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  name          String
+  description   String     @default("")
+  organizerId   String
+  organizer     User       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  requireAuth   Boolean    @default(false)
+  allowedEmails String     @default("[]")
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  timeSlots     TimeSlot[]
+}
+
+model TimeSlot {
+  id          String      @id @default(cuid())
+  pageId      String
+  page        BookingPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  startTime   DateTime
+  endTime     DateTime
+  capacity    Int         @default(1)
+  isCancelled Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  bookings    Booking[]
+}
+
+model Booking {
+  id            String    @id @default(cuid())
+  slotId        String
+  slot          TimeSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  attendeeName  String
+  attendeeEmail String
+  createdAt     DateTime  @default(now())
+  cancelledAt   DateTime?
+
+  @@unique([slotId, attendeeEmail])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  type      String
+  pageId    String?
+
+  @@index([email, type])
+}

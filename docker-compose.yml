@@ -1,0 +1,22 @@
+services:
+  slotter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # SQLite file inside the mounted volume
+      DATABASE_URL: "file:/app/data/prod.db"
+      # Change this to a strong random secret in production
+      SESSION_SECRET: "${SESSION_SECRET:-change-me-to-a-strong-32-char-secret}"
+      RESEND_API_KEY: "${RESEND_API_KEY}"
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
+      EMAIL_FROM: "${EMAIL_FROM:-Slotter <onboarding@resend.dev>}"
+    volumes:
+      # Persist the SQLite database across container restarts
+      - slotter_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  slotter_data:

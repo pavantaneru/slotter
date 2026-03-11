@@ -24,6 +24,10 @@ model BookingPage {
   organizer     User       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   requireAuth   Boolean    @default(false)
   allowedEmails String     @default("[]")
+  guestQuestions String    @default("[]")
+  eventType     String     @default("none")
+  meetingLink   String?
+  mapsLink      String?
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   timeSlots     TimeSlot[]
@@ -47,6 +51,7 @@ model Booking {
   slot          TimeSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
   attendeeName  String
   attendeeEmail String
+  guestResponses String   @default("[]")
   createdAt     DateTime  @default(now())
   cancelledAt   DateTime?
 

@@ -142,6 +142,24 @@ export default function NewPagePage() {
               )}
             </div>
             <div className="border-2 border-brand-black p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-brand-black/40 mb-1">Guest Questions</p>
+              <p className="font-black">
+                {pageData.guestQuestions.length} question{pageData.guestQuestions.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="border-2 border-brand-black p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-brand-black/40 mb-1">Event Format</p>
+              <p className="font-black">
+                {pageData.eventType === "none"
+                  ? "NO VENUE"
+                  : pageData.eventType === "gmeet"
+                    ? "GOOGLE MEET"
+                    : pageData.eventType === "teams"
+                      ? "MICROSOFT TEAMS"
+                      : "IN PERSON"}
+              </p>
+            </div>
+            <div className="border-2 border-brand-black p-4">
               <p className="text-xs font-black uppercase tracking-widest text-brand-black/40 mb-1">Time Slots</p>
               <p className="font-black">{slots.length} slot{slots.length !== 1 ? "s" : ""} added</p>
             </div>

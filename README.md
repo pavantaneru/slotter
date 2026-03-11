@@ -1,8 +1,8 @@
 # Slotter
 
-> Group slot booking, done right. Create a page, set your time slots, let multiple people book — up to your capacity limit.
+> Group slot booking, done right. Create a page, add venue details and guest questions, then let multiple people book up to your capacity limit.
 
-Slotter is a self-hostable, open-source group booking platform. Organizers create booking pages with configurable time slots and share a link. Attendees pick a slot and book instantly — no accounts required. Slots close when full. Everyone gets notified.
+Slotter is a self-hostable, open-source group booking platform. Organizers create booking pages with configurable time slots, optional email verification, custom guest questions, and venue details, then share a link. Attendees pick a slot, verify their email when required, answer any organizer-defined questions, and complete booking. Slots close when full, and confirmation emails include the relevant meeting or location details.
 
 ## Features
 
@@ -10,10 +10,37 @@ Slotter is a self-hostable, open-source group booking platform. Organizers creat
 - **No-friction booking** — attendees book with just a name and email; no account needed
 - **Email OTP auth** — optional email verification for restricted booking pages
 - **Allowlist support** — restrict bookings to a list of approved email addresses
+- **Guest intake questions** — organizers can add required or optional free-text questions for attendees
+- **Venue-aware bookings** — attach Google Meet, Microsoft Teams, or Google Maps links to a booking page
+- **Rich confirmations** — booking success pages and emails include meeting links or in-person map links
 - **Automatic emails** — confirmation sent on booking; cancellation notices sent to all affected attendees
 - **Slot management** — cancel individual bookings or entire slots from the dashboard
-- **CSV export** — download all bookings for any page
+- **CSV export** — download all bookings for any page, including guest question responses
 - **Neobrutalist UI** — bold, high-contrast design that's fast and accessible
+
+## How It Works
+
+### Organizer flow
+
+1. Log in with email OTP
+2. Create a booking page with its name, slug, and optional description
+3. Optionally require attendee email verification and restrict access to an approved email list
+4. Add guest questions and mark each one as required or optional
+5. Choose the event format:
+   - `No Venue`
+   - `Google Meet`
+   - `Microsoft Teams`
+   - `In Person` with a Google Maps link
+6. Add one or more time slots and share the public booking link
+
+### Attendee flow
+
+1. Open the public booking page and select a slot
+2. Enter name and email
+3. If the page requires verification, confirm the email with OTP
+4. Answer any organizer-defined guest questions
+5. Confirm the booking
+6. View the booking success page and receive a confirmation email with the slot details plus the meeting or map link
 
 ## Tech Stack
 
@@ -79,7 +106,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 
 ## Database
 
-Slotter uses SQLite by default (zero setup). To switch to PostgreSQL, update `prisma/schema.prisma`:
+Slotter uses SQLite by default (zero setup). The included Docker setup persists the SQLite database in a named volume. To switch to PostgreSQL, update `prisma/schema.prisma`:
 
 ```prisma
 datasource db {
@@ -114,6 +141,7 @@ src/
     layout/          # Navbar
     ui/              # Reusable primitives (Button, Input, Modal, Toast...)
   lib/
+    booking-page.ts  # Shared booking-page parsing and venue helpers
     email-templates/ # React Email templates
     email.ts         # Email sending helpers
     otp.ts           # OTP generation and validation
@@ -145,6 +173,21 @@ npm run start
 ```
 
 Or use `next build --experimental-app` with the standalone output option.
+
+### Docker Compose
+
+The included `docker-compose.yml` builds a production image and runs Prisma migrations when the container starts.
+
+```bash
+docker compose up --build -d
+```
+
+Because the app code is baked into the image, `docker compose restart` does not pick up source changes. Rebuild the image whenever the app code or Prisma migrations change:
+
+```bash
+docker compose down
+docker compose up --build -d
+```
 
 ## Environment File Example
 

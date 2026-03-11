@@ -10,6 +10,7 @@ import { SlotBuilder, SlotData } from "@/components/forms/SlotBuilder";
 import { ExportButton } from "@/components/dashboard/ExportButton";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import type { EventType, StoredGuestResponse } from "@/lib/booking-page";
 
 interface PageData {
   id: string;
@@ -18,13 +19,24 @@ interface PageData {
   description: string;
   isActive: boolean;
   requireAuth: boolean;
+  eventType: EventType;
+  guestQuestions: Array<{ id: string; prompt: string; required: boolean }>;
+  meetingLink: string | null;
+  mapsLink: string | null;
   timeSlots: Array<{
     id: string;
     startTime: string;
     endTime: string;
     capacity: number;
     isCancelled: boolean;
-    bookings: Array<{ id: string; attendeeName: string; attendeeEmail: string; createdAt: string; cancelledAt: string | null }>;
+    bookings: Array<{
+      id: string;
+      attendeeName: string;
+      attendeeEmail: string;
+      guestResponses: StoredGuestResponse[];
+      createdAt: string;
+      cancelledAt: string | null;
+    }>;
   }>;
 }
 
@@ -136,14 +148,28 @@ export default function ManagePagePage() {
             {page.requireAuth && (
               <span className="text-xs bg-brand-black text-brand-yellow px-2 py-0.5 font-black uppercase">OTP</span>
             )}
+            {page.guestQuestions.length > 0 && (
+              <span className="text-xs bg-brand-yellow px-2 py-0.5 font-black uppercase text-brand-black">
+                {page.guestQuestions.length} Q
+              </span>
+            )}
           </div>
           <a
             href={`/book/${page.slug}`}
             target="_blank"
             className="text-xs font-mono text-brand-orange hover:underline mt-1 block"
           >
-            /book/{page.slug} ↗
-          </a>
+              /book/{page.slug} ↗
+            </a>
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-black/40 mt-2">
+            {page.eventType === "none"
+              ? "No venue info"
+              : page.eventType === "gmeet"
+                ? "Google Meet"
+                : page.eventType === "teams"
+                  ? "Microsoft Teams"
+                  : "In person"}
+          </p>
         </div>
         <div className="flex gap-2 shrink-0">
           <ExportButton pageId={page.id} />
@@ -228,7 +254,7 @@ export default function ManagePagePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-brand-black text-brand-yellow">
-                    {["Slot", "Name", "Email", "Booked At", "Status", ""].map((h) => (
+                    {["Slot", "Name", "Email", "Guest Answers", "Booked At", "Status", ""].map((h) => (
                       <th key={h} className="text-left px-4 py-3 font-black uppercase text-xs tracking-widest">{h}</th>
                     ))}
                   </tr>
@@ -244,6 +270,26 @@ export default function ManagePagePage() {
                         </td>
                         <td className="px-4 py-3 font-bold">{b.attendeeName}</td>
                         <td className="px-4 py-3 font-mono text-xs text-brand-black/60">{b.attendeeEmail}</td>
+                        <td className="px-4 py-3">
+                          {b.guestResponses.length === 0 ? (
+                            <span className="text-xs font-bold uppercase tracking-wide text-brand-black/30">
+                              No answers
+                            </span>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              {b.guestResponses.map((response) => (
+                                <div key={response.questionId}>
+                                  <p className="text-[10px] font-black uppercase tracking-wide text-brand-black/40">
+                                    {response.prompt}
+                                  </p>
+                                  <p className="text-xs font-medium normal-case text-brand-black/70">
+                                    {response.answer}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-mono text-xs text-brand-black/40 whitespace-nowrap">
                           {new Date(b.createdAt).toLocaleDateString()}
                         </td>

@@ -3,6 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { requireOrganizer } from "@/lib/session";
 import { CreatePageSchema } from "@/types/api";
 import { generateSlug } from "@/lib/utils";
+import {
+  parseAllowedEmails,
+  parseEventType,
+  parseGuestQuestions,
+  serializeJson,
+} from "@/lib/booking-page";
+
+function serializePage(page: Record<string, unknown>) {
+  return {
+    ...page,
+    allowedEmails: parseAllowedEmails(page.allowedEmails as string | null | undefined),
+    guestQuestions: parseGuestQuestions(page.guestQuestions as string | null | undefined),
+    eventType: parseEventType(page.eventType as string | null | undefined),
+  };
+}
 
 export async function GET() {
   const { session, error } = await requireOrganizer();
@@ -19,7 +34,7 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(pages.map((p) => ({ ...p, allowedEmails: JSON.parse((p as any).allowedEmails ?? "[]") })));
+  return NextResponse.json(pages.map((page) => serializePage(page as unknown as Record<string, unknown>)));
 }
 
 export async function POST(req: NextRequest) {
@@ -32,7 +47,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
   }
 
-  const { name, description, slug, requireAuth, allowedEmails, isActive } = parsed.data;
+  const {
+    name,
+    description,
+    slug,
+    requireAuth,
+    allowedEmails,
+    guestQuestions,
+    eventType,
+    meetingLink,
+    mapsLink,
+    isActive,
+  } = parsed.data;
 
   // Auto-generate slug if not provided or ensure uniqueness
   let finalSlug = slug || generateSlug(name);
@@ -49,10 +75,14 @@ export async function POST(req: NextRequest) {
       description: description ?? "",
       organizerId: session!.organizerId!,
       requireAuth,
-      allowedEmails: JSON.stringify(allowedEmails),
+      allowedEmails: serializeJson(allowedEmails),
+      guestQuestions: serializeJson(guestQuestions),
+      eventType,
+      meetingLink: eventType === "gmeet" || eventType === "teams" ? meetingLink || null : null,
+      mapsLink: eventType === "in_person" ? mapsLink || null : null,
       isActive,
     },
   });
 
-  return NextResponse.json(page, { status: 201 });
+  return NextResponse.json(serializePage(page as unknown as Record<string, unknown>), { status: 201 });
 }

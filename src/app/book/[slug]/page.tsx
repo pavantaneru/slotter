@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { SlotGrid } from "@/components/booking/SlotGrid";
 import { AttendeeForm } from "@/components/forms/AttendeeForm";
 import { Badge } from "@/components/ui/Badge";
+import type { EventType, GuestQuestion } from "@/lib/booking-page";
 
 interface Slot {
   id: string;
@@ -23,6 +24,10 @@ interface PageData {
   description: string;
   isActive: boolean;
   requireAuth: boolean;
+  guestQuestions: GuestQuestion[];
+  eventType: EventType;
+  meetingLink: string | null;
+  mapsLink: string | null;
   timeSlots: Slot[];
 }
 
@@ -46,8 +51,8 @@ export default function BookingPage() {
     setSelectedSlotId((prev) => (prev === id ? null : id));
   }
 
-  function handleBooked() {
-    router.push(`/book/${params.slug}/success`);
+  function handleBooked(bookingId: string) {
+    router.push(`/book/${params.slug}/success?bookingId=${bookingId}`);
   }
 
   if (notFound) {
@@ -101,6 +106,11 @@ export default function BookingPage() {
               <span>✓</span> Email verification required to book
             </div>
           )}
+          {page.guestQuestions.length > 0 && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-brand-yellow px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-black">
+              <span>?</span> {page.guestQuestions.length} guest question{page.guestQuestions.length !== 1 ? "s" : ""}
+            </div>
+          )}
         </div>
 
         {!page.isActive ? (
@@ -130,6 +140,7 @@ export default function BookingPage() {
                   pageId={page.id}
                   slotId={selectedSlot.id}
                   requireAuth={page.requireAuth}
+                  guestQuestions={page.guestQuestions}
                   onBooked={handleBooked}
                 />
               ) : (

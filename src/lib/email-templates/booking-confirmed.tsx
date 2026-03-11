@@ -11,6 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import { format } from "date-fns";
+import { getVenueLabel, type EventType } from "@/lib/booking-page";
 
 interface BookingConfirmedEmailProps {
   attendeeName: string;
@@ -19,6 +20,9 @@ interface BookingConfirmedEmailProps {
   slotEnd: Date;
   pageSlug: string;
   appUrl: string;
+  eventType: EventType;
+  meetingLink: string | null;
+  mapsLink: string | null;
 }
 
 export function BookingConfirmedEmail({
@@ -28,12 +32,24 @@ export function BookingConfirmedEmail({
   slotEnd,
   pageSlug,
   appUrl,
+  eventType,
+  meetingLink,
+  mapsLink,
 }: BookingConfirmedEmailProps) {
   const dateStr = format(slotStart, "EEEE, MMMM d, yyyy");
   const startStr = format(slotStart, "h:mm a");
   const endStr = format(slotEnd, "h:mm a");
+  const venueLink = eventType === "in_person" ? mapsLink : meetingLink;
+  const venueLabel = getVenueLabel(eventType);
 
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(pageName)}&dates=${format(slotStart, "yyyyMMdd'T'HHmmss")}/${format(slotEnd, "yyyyMMdd'T'HHmmss")}&details=${encodeURIComponent(`Booked via Slotter: ${appUrl}/book/${pageSlug}`)}`;
+  const calendarDetails = [
+    `Booked via Slotter: ${appUrl}/book/${pageSlug}`,
+    venueLink ? `${venueLabel}: ${venueLink}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(pageName)}&dates=${format(slotStart, "yyyyMMdd'T'HHmmss")}/${format(slotEnd, "yyyyMMdd'T'HHmmss")}&details=${encodeURIComponent(calendarDetails)}`;
 
   return (
     <Html>
@@ -55,6 +71,16 @@ export function BookingConfirmedEmail({
             <Text style={slotDate}>{dateStr}</Text>
             <Text style={slotTime}>{startStr} — {endStr}</Text>
           </Section>
+          {venueLink && (
+            <Section style={slotBox}>
+              <Text style={slotLabel}>{venueLabel}</Text>
+              <Text style={body}>
+                <Link href={venueLink} style={link}>
+                  {venueLink}
+                </Link>
+              </Text>
+            </Section>
+          )}
           <Section style={{ textAlign: "center", padding: "16px 0" }}>
             <Link href={gcalUrl} style={calButton}>
               + ADD TO GOOGLE CALENDAR
@@ -168,6 +194,11 @@ const calButton: React.CSSProperties = {
   textTransform: "uppercase",
   textDecoration: "none",
   display: "inline-block",
+};
+
+const link: React.CSSProperties = {
+  color: "#1A0A3D",
+  wordBreak: "break-word",
 };
 
 const footer: React.CSSProperties = {

@@ -2,9 +2,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOrganizer } from "@/lib/session";
 import { UpdatePageSchema } from "@/types/api";
+import {
+  parseAllowedEmails,
+  parseEventType,
+  parseGuestQuestions,
+  parseGuestResponses,
+  serializeJson,
+} from "@/lib/booking-page";
 
 async function getPageForOrganizer(id: string, organizerId: string) {
   return prisma.bookingPage.findFirst({ where: { id, organizerId } });
+}
+
+function serializePage(page: Record<string, unknown>) {
+  const timeSlots = Array.isArray(page.timeSlots)
+    ? page.timeSlots.map((slot) => {
+        const slotRecord = slot as Record<string, unknown>;
+        return {
+          ...slotRecord,
+          bookings: Array.isArray(slotRecord.bookings)
+            ? slotRecord.bookings.map((booking) => ({
+                ...(booking as Record<string, unknown>),
+                guestResponses: parseGuestResponses(
+                  (booking as Record<string, unknown>).guestResponses as string | null | undefined
+                ),
+              }))
+            : slotRecord.bookings,
+        };
+      })
+    : page.timeSlots;
+
+  return {
+    ...page,
+    timeSlots,
+    allowedEmails: parseAllowedEmails(page.allowedEmails as string | null | undefined),
+    guestQuestions: parseGuestQuestions(page.guestQuestions as string | null | undefined),
+    eventType: parseEventType(page.eventType as string | null | undefined),
+  };
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,7 +54,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         include: {
           bookings: {
             where: { cancelledAt: null },
-            select: { id: true, attendeeName: true, attendeeEmail: true, createdAt: true },
+            select: {
+              id: true,
+              attendeeName: true,
+              attendeeEmail: true,
+              guestResponses: true,
+              createdAt: true,
+            },
           },
         },
       },
@@ -28,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (!page) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ...page, allowedEmails: JSON.parse((page as any).allowedEmails ?? "[]") });
+  return NextResponse.json(serializePage(page as unknown as Record<string, unknown>));
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,14 +93,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  const { allowedEmails, ...rest } = parsed.data;
+  const { allowedEmails, guestQuestions, eventType, meetingLink, mapsLink, ...rest } = parsed.data;
   const updated = await prisma.bookingPage.update({
     where: { id },
     data: {
       ...rest,
-      ...(allowedEmails !== undefined && { allowedEmails: JSON.stringify(allowedEmails) }),
+      ...(allowedEmails !== undefined && { allowedEmails: serializeJson(allowedEmails) }),
+      ...(guestQuestions !== undefined && { guestQuestions: serializeJson(guestQuestions) }),
+      ...(eventType !== undefined && { eventType }),
+      ...(eventType !== undefined && {
+        meetingLink:
+          eventType === "gmeet" || eventType === "teams" ? meetingLink || null : null,
+        mapsLink: eventType === "in_person" ? mapsLink || null : null,
+      }),
     },
   });
 
-  return NextResponse.json({ ...updated, allowedEmails: JSON.parse((updated as any).allowedEmails ?? "[]") });
+  return NextResponse.json(serializePage(updated as unknown as Record<string, unknown>));
 }

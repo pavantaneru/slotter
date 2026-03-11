@@ -13,9 +13,10 @@ export interface CsvBookingRow {
   attendeeEmail: string;
   bookedAt: string;
   status: string;
+  guestResponses?: Record<string, string>;
 }
 
-export function buildCsv(rows: CsvBookingRow[]): string {
+export function buildCsv(rows: CsvBookingRow[], questionHeaders: string[] = []): string {
   const headers = [
     "Slot Date",
     "Slot Start",
@@ -26,6 +27,7 @@ export function buildCsv(rows: CsvBookingRow[]): string {
     "Attendee Email",
     "Booked At",
     "Status",
+    ...questionHeaders,
   ];
 
   const lines = [
@@ -41,6 +43,7 @@ export function buildCsv(rows: CsvBookingRow[]): string {
         r.attendeeEmail,
         r.bookedAt,
         r.status,
+        ...questionHeaders.map((header) => r.guestResponses?.[header] ?? ""),
       ]
         .map(escapeCell)
         .join(",")

@@ -4,6 +4,7 @@ import { OtpEmail } from "./email-templates/otp";
 import { BookingConfirmedEmail } from "./email-templates/booking-confirmed";
 import { BookingCancelledEmail } from "./email-templates/booking-cancelled";
 import { SlotCancelledEmail } from "./email-templates/slot-cancelled";
+import type { EventType } from "./booking-page";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -38,6 +39,9 @@ export async function sendBookingConfirmedEmail(params: {
   pageSlug: string;
   slotStart: Date;
   slotEnd: Date;
+  eventType: EventType;
+  meetingLink: string | null;
+  mapsLink: string | null;
 }) {
   const html = await render(
     BookingConfirmedEmail({
@@ -47,6 +51,9 @@ export async function sendBookingConfirmedEmail(params: {
       slotEnd: params.slotEnd,
       pageSlug: params.pageSlug,
       appUrl: APP_URL,
+      eventType: params.eventType,
+      meetingLink: params.meetingLink,
+      mapsLink: params.mapsLink,
     })
   );
 

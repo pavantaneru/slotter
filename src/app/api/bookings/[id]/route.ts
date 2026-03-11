@@ -2,6 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireOrganizer } from "@/lib/session";
 import { sendBookingCancelledEmail } from "@/lib/email";
+import {
+  getVenueLabel,
+  normalizeMapsPreviewUrl,
+  parseEventType,
+  parseGuestResponses,
+} from "@/lib/booking-page";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const booking = await prisma.booking.findUnique({
+    where: { id },
+    include: {
+      slot: {
+        include: {
+          page: true,
+        },
+      },
+    },
+  });
+
+  if (!booking || booking.cancelledAt) {
+    return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+  }
+
+  const eventType = parseEventType(booking.slot.page.eventType);
+
+  return NextResponse.json({
+    id: booking.id,
+    attendeeName: booking.attendeeName,
+    pageName: booking.slot.page.name,
+    pageSlug: booking.slot.page.slug,
+    slotStart: booking.slot.startTime,
+    slotEnd: booking.slot.endTime,
+    eventType,
+    venueLabel: getVenueLabel(eventType),
+    meetingLink: booking.slot.page.meetingLink,
+    mapsLink: booking.slot.page.mapsLink,
+    mapsPreviewUrl: booking.slot.page.mapsLink
+      ? normalizeMapsPreviewUrl(booking.slot.page.mapsLink)
+      : null,
+    guestResponses: parseGuestResponses(booking.guestResponses),
+  });
+}
 
 export async function DELETE(
   _req: NextRequest,

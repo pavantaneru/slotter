@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { CreateBookingSchema } from "@/types/api";
 import { sendBookingConfirmedEmail } from "@/lib/email";
+import {
+  parseAllowedEmails,
+  parseEventType,
+  parseGuestQuestions,
+  serializeJson,
+} from "@/lib/booking-page";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
     }
 
-    const { slotId, pageId, attendeeName, attendeeEmail } = parsed.data;
+    const { slotId, pageId, attendeeName, attendeeEmail, guestResponses } = parsed.data;
 
     // Fetch slot with page
     const slot = await prisma.timeSlot.findUnique({
@@ -43,12 +49,47 @@ export async function POST(req: NextRequest) {
         );
       }
       // Verify the email is still on the allowed list
-      const allowed: string[] = JSON.parse((slot.page as any).allowedEmails ?? "[]");
-      if (allowed.length > 0 && !allowed.map((e) => e.toLowerCase()).includes(attendeeEmail.toLowerCase())) {
+      const allowed = parseAllowedEmails(slot.page.allowedEmails);
+      if (allowed.length > 0 && !allowed.includes(attendeeEmail.toLowerCase())) {
         return NextResponse.json(
           { error: "Your email is not on the approved list for this event." },
           { status: 403 }
         );
+      }
+    }
+
+    const pageQuestions = parseGuestQuestions(slot.page.guestQuestions);
+    const questionMap = new Map(pageQuestions.map((question) => [question.id, question]));
+    const responseMap = new Map(
+      guestResponses
+        .map((response) => [response.questionId, response.answer.trim()] as const)
+        .filter(([, answer]) => answer.length > 0)
+    );
+
+    for (const question of pageQuestions) {
+      if (question.required && !responseMap.get(question.id)) {
+        return NextResponse.json(
+          { error: `Please answer the required question: ${question.prompt}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const storedResponses = pageQuestions
+      .map((question) => {
+        const answer = responseMap.get(question.id);
+        if (!answer) return null;
+        return {
+          questionId: question.id,
+          prompt: question.prompt,
+          answer,
+        };
+      })
+      .filter((entry): entry is { questionId: string; prompt: string; answer: string } => entry !== null);
+
+    for (const response of guestResponses) {
+      if (!questionMap.has(response.questionId)) {
+        return NextResponse.json({ error: "Invalid guest question response" }, { status: 400 });
       }
     }
 
@@ -76,9 +117,16 @@ export async function POST(req: NextRequest) {
         throw new Error("SLOT_FULL");
       }
       return tx.booking.create({
-        data: { slotId, attendeeName, attendeeEmail },
+        data: {
+          slotId,
+          attendeeName,
+          attendeeEmail,
+          guestResponses: serializeJson(storedResponses),
+        },
       });
     });
+
+    const eventType = parseEventType(slot.page.eventType);
 
     // Send confirmation email (non-blocking — don't fail if email fails)
     sendBookingConfirmedEmail({
@@ -88,6 +136,9 @@ export async function POST(req: NextRequest) {
       pageSlug: slot.page.slug,
       slotStart: slot.startTime,
       slotEnd: slot.endTime,
+      eventType,
+      meetingLink: slot.page.meetingLink,
+      mapsLink: slot.page.mapsLink,
     }).catch((err) => console.error("Booking confirm email failed:", err));
 
     return NextResponse.json(booking, { status: 201 });
